@@ -46,13 +46,14 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
      		});
 	    }
 
-	    function getByCPF(cpf) {
-	    	db.collection('cliente').find({"cpf":cpf}).toArray(function(err, docs) {
-            	assert.equal(err, null);
-	     		console.log(JSON.stringify(docs));                                           
-	     		if(docs.length == 1){	     	     		
-	     			return docs[0];
-	     		}	     		
+	    function getByCPF(cpf,callback) {
+	    	db.collection('cliente').find({"cpf":cpf}).toArray(function(err, docs) {            	
+
+            	if(err) {       
+		            callback(err);
+        		}	     		
+
+	     		callback(null,docs[0]);	     		
         	});
 	    }
 
@@ -126,7 +127,6 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 			var msgContent = messageText
 		}	
 
-		
 	    var message = {
 	                "id": "311F87C0-F938-4FF3-991A-7C5AEF7771A5",
 	                "to": messageTo,
@@ -139,11 +139,12 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 	    
 
 function botSteps(message) {
+	console.log("step: "+user_data.step);
 	switch(user_data.step){
 		case 1:
 			stepProfile(message);
 			break;
-		case 2:
+		case 2:			
 			stepConfirmation(message);
 			break;
 		case 3:
@@ -181,26 +182,57 @@ function stepProfile(message){
 
 
 function stepConfirmation(message) {
-	switch (message.content) {	    	
-	        case "Começar":
-	        	sendMessageToUser({
-	                type: "text/plain",
-	                content: "Olá, eu sou o AutoBot. Antes de começarmos, gostaria de verificar algumas informações. Você poderia informar o seu nome completo?",
-	                to: message.from
-	            });	            
-	            break;
-	            
-	        default:
-	        	user_data.nome = message.content.toLowerCase();
-	        	user_data.step = 2;
-		        sendMessageToUser({
-		                type: "text/plain",
-		                content: "Ótimo. E poderia confirmar o seu CPF?",
-		                to: message.from
-		            });	            
-		            break;	        
-	    }
+	
+	switch (message.content) {	    
+		default:
+
+			getByCPF(message.content, function(err,docs){
+				
+				if(err){
+					console.log("erro"+err);
+				}
+				console.log(user_data.nome +"--"+docs.nome.toLowerCase());
+				if( docs != null && user_data.nome == docs.nome.toLowerCase()){
+					console.log("Encontrou");
+					sendMessageToUser({
+			            type: "text/plain",
+			            content: "Legal! Encontrei seu cadastro.",
+			            to: message.from
+			        });
+
+					switch(docs.categoria){
+						//OK
+						case 'A':
+							let text = "Verifiquei que você esta com tudo em dia. Gostaria que eu lhe ajudasse enviando notificações sobre próximas faturas?";
+							var messageToSend = buildMessage(message.from,text,["sim","nao"]);	            		
+		            		sendMessageToUser(messageToSend);
+							break;
+						//Inadimpliencia baixa
+						case 'B':
+							console.log("b");
+							break;
+						//Inadimpliencia alta
+						case 'C':
+							console.log("b");
+							break;
+
+						default:
+							console.log("No default");
+					}
+
+				}else{
+					console.log("Nope");
+					sendMessageToUser({
+			            type: "text/plain",
+			            content: "O CPF inválido! Lembre-se de preencher no formato XXX.XXX.XXX-XX",
+			            to: message.from
+		        });	            		        
+				}				
+			});						  
+	}
 }
+
+
 
 
 	var switchMessages = function(message) {
@@ -211,13 +243,13 @@ function stepConfirmation(message) {
 	            console.log(messageToSend);
 	            sendMessageToUser(messageToSend);
 	            var msg = {  
-	  "id": "9",
-	  "to": "postmaster@ai.msging.net",
-	  "method": "set",
-	  "uri": "/analysis",
-	  "type": "application/vnd.iris.ai.analysis-request+json",
-	  "resource": {
-	    "text":"Quero uma pizza marguerita"
+		   "id": "9",
+		   "to": "postmaster@ai.msging.net",
+		   "method": "set",
+		   "uri": "/analysis",
+		   "type": "application/vnd.iris.ai.analysis-request+json",
+		   "resource": {
+		    "text":"Quero uma pizza marguerita"
 	  		}
 		};
 	  	sendMessageToUser(msg);
@@ -235,7 +267,7 @@ function stepConfirmation(message) {
 	//run server
 	app.listen(app.get('port'), function() {
 	    console.log('running on port', app.get('port'))
-	    getClientes();
-	    getByCPF("106.303.836-77");
+	//    getClientes();
+	 //   getByCPF("106.303.836-77");
 	})
 });
