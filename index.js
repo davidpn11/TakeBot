@@ -150,9 +150,15 @@ function botSteps(message) {
 		case 3:
 			stepAnalysis(message);
 			break;
-		case 3:
+		case 4:
 			stepProposal(message);
-			break;
+			break;		
+		case 5:
+			stepNotificationConfirmation(message);
+			break;	
+		case 6:
+			stepPayment(message);
+			break;	
 	}
 }
 
@@ -191,78 +197,158 @@ function stepConfirmation(message) {
 				if(err){
 					console.log("erro"+err);
 				}
-				console.log(user_data.nome +"--"+docs.nome.toLowerCase());
-				if( docs != null && user_data.nome == docs.nome.toLowerCase()){
-					console.log("Encontrou");
-					sendMessageToUser({
-			            type: "text/plain",
-			            content: "Legal! Encontrei seu cadastro.",
-			            to: message.from
-			        });
 
-					switch(docs.categoria){
-						//OK
-						case 'A':
-							let text = "Verifiquei que você esta com tudo em dia. Gostaria que eu lhe ajudasse enviando notificações sobre próximas faturas?";
-							var messageToSend = buildMessage(message.from,text,["sim","nao"]);	            		
-		            		sendMessageToUser(messageToSend);
-							break;
-						//Inadimpliencia baixa
-						case 'B':
-							console.log("b");
-							break;
-						//Inadimpliencia alta
-						case 'C':
-							console.log("b");
-							break;
-
-						default:
-							console.log("No default");
-					}
-
-				}else{
+				if(docs == undefined){					
 					console.log("Nope");
 					sendMessageToUser({
 			            type: "text/plain",
 			            content: "O CPF inválido! Lembre-se de preencher no formato XXX.XXX.XXX-XX",
 			            to: message.from
-		        });	            		        
+		  	        });	            		        			
+				}else{
+					if(user_data.nome == docs.nome.toLowerCase()){
+						console.log("Encontrou");
+						sendMessageToUser({
+				            type: "text/plain",
+				            content: "Legal! Encontrei seu cadastro.",
+				            to: message.from
+				        });
+
+						switch(docs.categoria){
+							//OK
+							case 'A':
+								let text = "Acabei de ver que você está em dia com seus débitos, parabéns! O que gostaria de fazer?";
+								var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);	            		
+			            		sendMessageToUser(messageToSend);
+			            		user_data.step = 3;
+								break;
+							//Inadimpliencia baixa
+							case 'B':
+								sendMessageToUser({
+						            type: "text/plain",
+						            content: "Verifiquei que você atrasou a conta",
+						            to: message.from
+						        });
+								break;
+							//Inadimpliencia alta
+							case 'C':
+								sendMessageToUser({
+						            type: "text/plain",
+						            content: "Verifiquei que você atrasou a conta muito",
+						            to: message.from
+						        });
+								break;
+
+							default:
+								sendMessageToUser({
+						            type: "text/plain",
+						            content: "Ocorreu um erro",
+						            to: message.from
+						        });
+						}
+
+					}else{
+						console.log("Nope");
+						sendMessageToUser({
+				            type: "text/plain",
+				            content: "O Nome e o CPF não batem. Favor digitar o nome novamente.",
+				            to: message.from
+			  	        });	       
+			  	        user_data.step = 1;     		        
+					}	
 				}				
+					
 			});						  
 	}
 }
 
+	function stepAnalysis(message) {
+		switch (message.content) {	    
+			case "Receber Notificações":
+				var text = "Beleza. Eu posso te enviar uma mensagem 3 dias antes de sua fatura vencer. Tudo bem?";
+				var messageToSend = buildMessage(message.from,text,["Sim","Não"]);	     			
+				sendMessageToUser(messageToSend);
+	           	user_data.step = 5;
+				break;
+
+			case "Próxima Fatura":
+				var text = "Nós podemos te enviar o boleto email e SMS. Como gostaria de recebê-lo?";
+				var messageToSend = buildMessage(message.from,text,["Email","SMS","Cancelar"]);	     			
+				sendMessageToUser(messageToSend);
+	           	user_data.step = 6;
+				break;
+			case "Encerrar Conversa":
+				sendMessageToUser({
+			            type: "text/plain",
+			            content: "Ok! Qualquer coisa, estou aqui. Até mais!",
+			            to: message.from
+		  	        });	 
+	           	user_data.step = 1;
+				break;
+			default:
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Desculpe. Não entendi.",
+		            to: message.from
+	  	        });	 
+		}
+	}
+
+	function stepNotificationConfirmation(message) {
+		switch (message.content) {	 
+			case "Sim":
+				var text = "Ótimo. A partir de hoje eu vou te informar sempre que sua fatura estiver vencendo =). Algo mais?";
+				var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     	    			
+				sendMessageToUser(messageToSend);
+	           	user_data.step = 3;
+				break;
+			case "Não":
+				var text = "Que pena =(. Em que mais posso te ajudar?";
+				var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     			
+				sendMessageToUser(messageToSend);
+	           	user_data.step = 3;
+				break;
+			default:
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Desculpe. Não entendi.",
+		            to: message.from
+	  	        });	
+		}
+	}
 
 
+	function stepPayment(message) {
+		switch (message.content) {			
+				case "Email":
+					var text = "Legal. Sua próxima fatura será enviada por email em até 24 horas. Algo mais que eu posso ajudar? ";
+					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);
+					sendMessageToUser(messageToSend);
+	           		user_data.step = 3;
+	           		break;
+	           	case "SMS":
+					var text = "Legal. Sua próxima fatura será enviada por SMS em até 24 horas. Algo mais que eu posso ajudar? ";
+					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);
+					sendMessageToUser(messageToSend);
+	           		user_data.step = 3;
+	           		break;
+	           	case "Cancelar":
+					var text = "Tudo bem. O que gostaria de fazer?";
+					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);  			
+					sendMessageToUser(messageToSend);
+	           		user_data.step = 3;	           		
+				break;
 
-	var switchMessages = function(message) {
-	 	var messageToSend;
-	    switch (message.content) {
-	    	case "Começar":
-	            messageToSend = buildMessage(message.from,"Olá, eu sou o AutoBot. Vamos começar",["sim","nao"]);
-	            console.log(messageToSend);
-	            sendMessageToUser(messageToSend);
-	            var msg = {  
-		   "id": "9",
-		   "to": "postmaster@ai.msging.net",
-		   "method": "set",
-		   "uri": "/analysis",
-		   "type": "application/vnd.iris.ai.analysis-request+json",
-		   "resource": {
-		    "text":"Quero uma pizza marguerita"
-	  		}
-		};
-	  	sendMessageToUser(msg);
-	            break;
-	        default:
-	        	sendMessageToUser({
-	                type: "text/plain",
-	                content: "Ok, se mudar de ideia estarei aqui.",
-	                to: message.from
-	            });
-	            
-	    }
-	};
+				default:
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Desculpe. Não entendi.",
+		            to: message.from
+	  	        });	
+	  	        break;
+		}		
+	}
+
 
 	//run server
 	app.listen(app.get('port'), function() {
