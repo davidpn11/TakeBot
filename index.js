@@ -136,8 +136,15 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 	}
 
 
+	function calculateProposal(argument) {
+		
+	}
 	
 	function buildProposals(message) {
+
+
+
+
 			var message ={
 		    "id": "1",
 		    "to": message.from,
@@ -157,7 +164,7 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 	            	{
 		                "label": {
 		                    "type": "text/plain",
-		                    "value": "Selecionar Proposta 1"
+		                    "value": "Proposta 1"
 		                }
 	            	}
         		]
@@ -166,15 +173,15 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
                 "header": {
                     "type": "application/vnd.lime.media-link+json",
                     "value": {
-                        "title": "Proposta 1",
-                        "text": "Detalhes da proposta1 bla bla",                      
+                        "title": "Proposta 2",
+                        "text": "Detalhes da proposta2 bla bla",                      
                     }
                 },
                  "options": [          
 	            	{
 		                "label": {
 		                    "type": "text/plain",
-		                    "value": "Selecionar Proposta 2"
+		                    "value": "Proposta 2"
 		                }
 	            	}
         		]
@@ -209,6 +216,12 @@ function botSteps(message) {
 			break;	
 		case 6:
 			stepPayment(message);
+			break;	
+		case 7:
+			stepHandleProposals(message);
+			break;	
+		case 8:
+			stepFinishProposal(message);
 			break;	
 	}
 }
@@ -333,7 +346,7 @@ function stepConfirmation(message) {
 			case "Encerrar Conversa":
 				sendMessageToUser({
 			            type: "text/plain",
-			            content: "Ok! Qualquer coisa, estou aqui. Até mais!",
+			            content: "Ok! Qualquer coisa, estou aqui. Até mais!=)",
 			            to: message.from
 		  	        });	 
 	           	user_data.step = 1;
@@ -406,6 +419,7 @@ function stepConfirmation(message) {
 		            content: "Legal! O que acha destas propostas?",
 		            to: message.from
 	  	        });	
+	  	        sendMessageToUser(buildProposals(message));
 	           	user_data.step = 7;
 				break;
 			case "Não":
@@ -424,6 +438,64 @@ function stepConfirmation(message) {
 		}
 	}
 
+
+
+	function stepHandleProposals(message) {
+		switch (message.content) {	 
+			case "Proposta 1":
+				if(user_data == 'B'){
+					var text = "Ótimo, sua conta agora está assim: \n Está Correto?";
+					var messageToSend = buildMessage(message.from,text,["Sim","Não"]);     			
+					sendMessageToUser(messageToSend);
+		           	user_data.step = 8;
+					break;
+				}else{
+					var text = "Ótimo, sua conta agora está assim: \n Está Correto?";
+					var messageToSend = buildMessage(message.from,text,["Sim","Não"]);     			
+					sendMessageToUser(messageToSend);
+		           	user_data.step = 8;
+					break;
+				}
+				break;
+			case "Proposta 2":
+					var text = "Ótimo, sua conta agora está assim: \n Está Correto?";
+					var messageToSend = buildMessage(message.from,text,["Sim","Não"]);     			
+					sendMessageToUser(messageToSend);
+		           	user_data.step = 8;
+					break;
+			default:
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Desculpe. Não entendi.",
+		            to: message.from
+	  	        });	
+		}
+	}
+
+
+	function stepFinishProposal(message) {
+		switch (message.content) {	 
+			case "Sim":
+				var text = "Ótimo! Sua conta foi alterada. Algo mais que posso ajudar?";
+				var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     	    			
+				sendMessageToUser(messageToSend);
+	           	user_data.step = 3;
+				break;
+			case "Não":
+				var text = "Que pena =(. Em que mais posso te ajudar?";
+				var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     			
+				sendMessageToUser(messageToSend);
+	           	user_data.step = 3;
+				break;
+			default:
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Desculpe. Não entendi.",
+		            to: message.from
+	  	        });	
+		}
+		}
+	
 
 	//run server
 	app.listen(app.get('port'), function() {
