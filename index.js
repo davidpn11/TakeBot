@@ -47,12 +47,10 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 	    }
 
 	    function getByCPF(cpf,callback) {
-	    	db.collection('cliente').find({"cpf":cpf}).toArray(function(err, docs) {            	
-
+	    	db.collection('cliente').find({"cpf":cpf}).toArray(function(err, docs) {            		    	
             	if(err) {       
 		            callback(err);
-        		}	     		
-
+        		}	     		        		
 	     		callback(null,docs[0]);	     		
         	});
 	    }
@@ -136,6 +134,59 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 
 	    return message;
 	}
+
+
+	
+	function buildProposals(message) {
+			var message ={
+		    "id": "1",
+		    "to": message.from,
+		"type": "application/vnd.lime.collection+json",
+    "content": {
+        "itemType": "application/vnd.lime.document-select+json",
+        "items": [
+            {
+                "header": {
+                    "type": "application/vnd.lime.media-link+json",
+                    "value": {
+                        "title": "Proposta 1",
+                        "text": "Detalhes da proposta1 bla bla",                      
+                    }
+                },
+                 "options": [          
+	            	{
+		                "label": {
+		                    "type": "text/plain",
+		                    "value": "Selecionar Proposta 1"
+		                }
+	            	}
+        		]
+            },
+            {
+                "header": {
+                    "type": "application/vnd.lime.media-link+json",
+                    "value": {
+                        "title": "Proposta 1",
+                        "text": "Detalhes da proposta1 bla bla",                      
+                    }
+                },
+                 "options": [          
+	            	{
+		                "label": {
+		                    "type": "text/plain",
+		                    "value": "Selecionar Proposta 2"
+		                }
+	            	}
+        		]
+            }
+        ]
+    }
+		};
+		return message;
+	
+	}
+
+
 	    
 
 function botSteps(message) {
@@ -169,9 +220,10 @@ function stepProfile(message){
 	        case "Começar":
 	        	sendMessageToUser({
 	                type: "text/plain",
-	                content: "Olá, eu sou o AutoBot. Antes de começarmos, gostaria de verificar algumas informações. Você poderia informar o seu nome completo?",
+	                content: "Olá, eu sou a Jess! Antes de começarmos, você poderia informar o seu nome completo?",
 	                to: message.from
-	            });	            
+	            });
+	         
 	            break;
 	            
 	        default:
@@ -188,9 +240,9 @@ function stepProfile(message){
 
 
 function stepConfirmation(message) {
-	
-	switch (message.content) {	    
-		default:
+	console.log("conformation");
+	 switch (message.content) {	    
+	 	default:
 
 			getByCPF(message.content, function(err,docs){
 				
@@ -202,50 +254,51 @@ function stepConfirmation(message) {
 					console.log("Nope");
 					sendMessageToUser({
 			            type: "text/plain",
-			            content: "O CPF inválido! Lembre-se de preencher no formato XXX.XXX.XXX-XX",
+			            content: "Este CPF é inválido! Tente preencher no formato XXX.XXX.XXX-XX",
 			            to: message.from
 		  	        });	            		        			
 				}else{
+					console.log("achou");
 					if(user_data.nome == docs.nome.toLowerCase()){
-						console.log("Encontrou");
+						console.log("Encontrou");						
+
 						sendMessageToUser({
 				            type: "text/plain",
-				            content: "Legal! Encontrei seu cadastro.",
+				            content: "Ótimo, encontrei seu cadastro!",
 				            to: message.from
 				        });
+				        user_data = docs;
+				        console.log(JSON.stringify(user_data));
 
-						switch(docs.categoria){
+	 					switch(docs.categoria){
 							//OK
-							case 'A':
-								let text = "Acabei de ver que você está em dia com seus débitos, parabéns! O que gostaria de fazer?";
-								var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);	            		
-			            		sendMessageToUser(messageToSend);
-			            		user_data.step = 3;
-								break;
-							//Inadimpliencia baixa
-							case 'B':
-								sendMessageToUser({
-						            type: "text/plain",
-						            content: "Verifiquei que você atrasou a conta",
-						            to: message.from
-						        });
-								break;
-							//Inadimpliencia alta
-							case 'C':
-								sendMessageToUser({
-						            type: "text/plain",
-						            content: "Verifiquei que você atrasou a conta muito",
-						            to: message.from
-						        });
+							case "A":
+								var text = "Acabei de ver que você está em dia com seus débitos, parabéns! O que gostaria de fazer?";
+								var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);	    
+								sendMessageToUser(messageToSend);
+					           	user_data.step = 3;
 								break;
 
-							default:
-								sendMessageToUser({
-						            type: "text/plain",
-						            content: "Ocorreu um erro",
-						            to: message.from
-						        });
-						}
+							case "B":
+								var text = "Verifquei que você tem algumas pendências. Gostaria de negociá-las?";
+								var messageToSend = buildMessage(message.from,text,["Sim", "Não"]);	    			
+								sendMessageToUser(messageToSend);
+					           	user_data.step = 4;
+								break;
+							case "C":
+								var text = "Verifquei que você tem algumas pendências. Gostaria de negociá-las?";
+								var messageToSend = buildMessage(message.from,text,["Sim", "Não"]);	    			
+								sendMessageToUser(messageToSend);
+					           	user_data.step = 4;
+								break;
+						default:
+							sendMessageToUser({
+					            type: "text/plain",
+					            content: "Desculpe. OPcorreu um erro.",
+					            to: message.from					            
+				  	        });	 			    
+				  	        user_data.step = 2;    
+	 					}
 
 					}else{
 						console.log("Nope");
@@ -256,9 +309,9 @@ function stepConfirmation(message) {
 			  	        });	       
 			  	        user_data.step = 1;     		        
 					}	
-				}				
+	 			}				
 					
-			});						  
+	 		});						  
 	}
 }
 
@@ -272,7 +325,7 @@ function stepConfirmation(message) {
 				break;
 
 			case "Próxima Fatura":
-				var text = "Nós podemos te enviar o boleto email e SMS. Como gostaria de recebê-lo?";
+				var text = "Nós podemos te enviar o boleto da sua próxima fatura via email e SMS. Como gostaria de recebê-lo?";
 				var messageToSend = buildMessage(message.from,text,["Email","SMS","Cancelar"]);	     			
 				sendMessageToUser(messageToSend);
 	           	user_data.step = 6;
@@ -297,7 +350,7 @@ function stepConfirmation(message) {
 	function stepNotificationConfirmation(message) {
 		switch (message.content) {	 
 			case "Sim":
-				var text = "Ótimo. A partir de hoje eu vou te informar sempre que sua fatura estiver vencendo =). Algo mais?";
+				var text = "Ótimo! Acabei de ativar o serviço de recebimento de notificações. Algo mais que posso ajudar?";
 				var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     	    			
 				sendMessageToUser(messageToSend);
 	           	user_data.step = 3;
@@ -320,24 +373,19 @@ function stepConfirmation(message) {
 
 	function stepPayment(message) {
 		switch (message.content) {			
-				case "Email":
-					var text = "Legal. Sua próxima fatura será enviada por email em até 24 horas. Algo mais que eu posso ajudar? ";
-					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);
+				case "Sim":
+					var text = "Ótimo! Acabei de ativar o serviço de recebimento de notificações. Algo mais que posso ajudar?";
+					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     	    			
 					sendMessageToUser(messageToSend);
-	           		user_data.step = 3;
-	           		break;
-	           	case "SMS":
-					var text = "Legal. Sua próxima fatura será enviada por SMS em até 24 horas. Algo mais que eu posso ajudar? ";
-					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);
+		           	user_data.step = 3;
+					break;
+			
+				case "Não":
+					var text = "Que pena =(. Em que mais posso te ajudar?";
+					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     			
 					sendMessageToUser(messageToSend);
-	           		user_data.step = 3;
-	           		break;
-	           	case "Cancelar":
-					var text = "Tudo bem. O que gostaria de fazer?";
-					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);  			
-					sendMessageToUser(messageToSend);
-	           		user_data.step = 3;	           		
-				break;
+		           	user_data.step = 3;
+					break;
 
 				default:
 				sendMessageToUser({
@@ -347,6 +395,33 @@ function stepConfirmation(message) {
 	  	        });	
 	  	        break;
 		}		
+	}
+
+
+	function stepProposal(message) {
+		switch (message.content) {	 
+			case "Sim":
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Legal! O que acha destas propostas?",
+		            to: message.from
+	  	        });	
+	           	user_data.step = 7;
+				break;
+			case "Não":
+					var text = "Que pena =(. Em que mais posso te ajudar?";
+					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     			
+					sendMessageToUser(messageToSend);
+		           	user_data.step = 3;
+					break;
+				break;
+			default:
+				sendMessageToUser({
+		            type: "text/plain",
+		            content: "Desculpe. Não entendi.",
+		            to: message.from
+	  	        });	
+		}
 	}
 
 
