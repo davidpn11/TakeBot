@@ -20,6 +20,8 @@ app.set('port', port)
 
 var user_data = {};
 user_data.step = 1;
+var taxa = 1.0265287;
+var user_proposal = [];
 
 //setting up express
 app.use(bodyParser.urlencoded({extended: false}))
@@ -135,29 +137,44 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 	    return message;
 	}
 
+	function calculateProposal1() {
+		var juros = Math.pow(taxa,user_data.parcelas_atrasadas);
+		var desconto = user_data.valor_total*juros - user_data.valor_total;
+		var s = "Para te ajudar eu posso te dar um desconto de R$"+ desconto.toFixed(2)+". Que tal?";
+		user_proposal[0] = "desconto de R$"+ desconto.toFixed(2);		
+		return s;
+	}	
 
-	function calculateProposal(argument) {
-		
+
+
+	
+	function calculateProposal2() {
+		var juros = Math.pow(taxa,user_data.parcelas_atrasadas);
+		var novo_valor = user_data.valor_total*juros;		
+		user_data.valor_total = novo_valor;		
+		var valor_parcela = user_data.valor_total/user_data.parcelas_restantes;	
+		var dif_parcelas = 60 - user_data.parcelas_restantes;
+		var nova_parcela = novo_valor/60;
+		var dif_valor_parcela = valor_parcela - nova_parcela;
+		var s = "A gente diminui a parcela em R$"+dif_valor_parcela.toFixed(2)+" e estendemos o prazo por mais "+dif_parcelas+" meses.";// a partir de hoje ("+). Que tal?";
+		user_proposal[1] = "R$"+nova_parcela.toFixed(2)+" x 60 meses";
+		return s; 
 	}
+
+	
 	
 	function buildProposals(message) {
 
+		var items = [];
 
-
-
-			var message ={
-		    "id": "1",
-		    "to": message.from,
-		"type": "application/vnd.lime.collection+json",
-    "content": {
-        "itemType": "application/vnd.lime.document-select+json",
-        "items": [
+		if(user_data.categoria == "C"){
+			items = [
             {
                 "header": {
                     "type": "application/vnd.lime.media-link+json",
                     "value": {
                         "title": "Proposta 1",
-                        "text": "Detalhes da proposta1 bla bla",                      
+                        "text": calculateProposal1(),                      
                     }
                 },
                  "options": [          
@@ -174,7 +191,7 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
                     "type": "application/vnd.lime.media-link+json",
                     "value": {
                         "title": "Proposta 2",
-                        "text": "Detalhes da proposta2 bla bla",                      
+                        "text": calculateProposal2(),                      
                     }
                 },
                  "options": [          
@@ -186,8 +203,40 @@ MongoClient.connect('mongodb://localhost:27017/autoja', function(err, db) {
 	            	}
         		]
             }
-        ]
-    }
+        ];
+
+		}else{
+
+			items = [
+		            {
+		                "header": {
+		                    "type": "application/vnd.lime.media-link+json",
+		                    "value": {
+		                        "title": "Proposta 1",
+		                        "text": calculateProposal1(),                      
+		                    }
+		                },
+		                 "options": [          
+			            	{
+				                "label": {
+				                    "type": "text/plain",
+				                    "value": "Proposta 1"
+				                }
+			            	}
+		        		]
+		            }
+        		];
+            }
+       
+
+			var message ={
+		    "id": "1",
+		    "to": message.from,
+		"type": "application/vnd.lime.collection+json",
+    "content": {
+        "itemType": "application/vnd.lime.document-select+json",
+        "items": items
+    	}
 		};
 		return message;
 	
@@ -346,7 +395,7 @@ function stepConfirmation(message) {
 			case "Encerrar Conversa":
 				sendMessageToUser({
 			            type: "text/plain",
-			            content: "Ok! Qualquer coisa, estou aqui. Até mais!=)",
+			            content: "Ok! Qualquer coisa, estou aqui. Até mais! =)",
 			            to: message.from
 		  	        });	 
 	           	user_data.step = 1;
@@ -386,15 +435,15 @@ function stepConfirmation(message) {
 
 	function stepPayment(message) {
 		switch (message.content) {			
-				case "Sim":
-					var text = "Ótimo! Acabei de ativar o serviço de recebimento de notificações. Algo mais que posso ajudar?";
+				case "Email":
+					var text = "Ótimo! Você irá receber a próxima fatura via email em até 24 horas. Em que mais posso te ajudar?";
 					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     	    			
 					sendMessageToUser(messageToSend);
 		           	user_data.step = 3;
 					break;
 			
-				case "Não":
-					var text = "Que pena =(. Em que mais posso te ajudar?";
+				case "SMS":
+					var text = "Ótimo! Você irá receber a próxima fatura via SMS em até 24 horas. Em que mais posso te ajudar?";
 					var messageToSend = buildMessage(message.from,text,["Receber Notificações","Próxima Fatura", "Encerrar Conversa"]);     			
 					sendMessageToUser(messageToSend);
 		           	user_data.step = 3;
@@ -444,13 +493,13 @@ function stepConfirmation(message) {
 		switch (message.content) {	 
 			case "Proposta 1":
 				if(user_data == 'B'){
-					var text = "Ótimo, sua conta agora está assim: \n Está Correto?";
+					var text = "Ótimo, então daremos à você um "+user_proposal[0]+". Está correto?";
 					var messageToSend = buildMessage(message.from,text,["Sim","Não"]);     			
 					sendMessageToUser(messageToSend);
 		           	user_data.step = 8;
 					break;
 				}else{
-					var text = "Ótimo, sua conta agora está assim: \n Está Correto?";
+					var text = "Ótimo, então daremos à você um um "+user_proposal[0]+". Está correto?";
 					var messageToSend = buildMessage(message.from,text,["Sim","Não"]);     			
 					sendMessageToUser(messageToSend);
 		           	user_data.step = 8;
@@ -458,7 +507,7 @@ function stepConfirmation(message) {
 				}
 				break;
 			case "Proposta 2":
-					var text = "Ótimo, sua conta agora está assim: \n Está Correto?";
+					var text = "Ótimo, agora suas faturas estão assim:\n "+user_proposal[1]+"\nEstá correto?";
 					var messageToSend = buildMessage(message.from,text,["Sim","Não"]);     			
 					sendMessageToUser(messageToSend);
 		           	user_data.step = 8;
